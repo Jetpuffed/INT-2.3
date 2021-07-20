@@ -51,7 +51,7 @@ pixel_map = {
     35: None,
 }
 
-for y in range(Y // 8):  # Iterates like a raster scannng pattern
+for y in range(Y // 8):  # Iterates like a raster scanning pattern
     if pixel_map[y] is not None:
         for x in range(X):
             if x in pixel_map[y]:
