@@ -134,7 +134,8 @@ class Pacman(pygame.sprite.Sprite):
         self.area = screen.get_rect()
 
         self.rect = self.image.get_rect()
-        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + 4, (self.curr_tile[1] * TILE_SIZE) + 4
+        self.padding = 4
+        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + self.padding, (self.curr_tile[1] * TILE_SIZE) + self.padding
 
         self.speed = [1, 0]
         self.timer = 0
@@ -153,11 +154,35 @@ class Pacman(pygame.sprite.Sprite):
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
 
         if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
-            self.rect = self.rect.move((self.speed[0], self.speed[1]))
+            if self.speed == [1, 0]:
+                if not self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
+                    if next_pos.centerx <= ((self.curr_tile[0] + 1) * TILE_SIZE) - 5:
+                        self.rect.centerx = next_pos.centerx
+                else:
+                    self.rect.centerx = next_pos.centerx
+
+            if self.speed == [-1, 0]:
+                if not self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
+                    if next_pos.centerx >= ((self.curr_tile[0] - 1) * TILE_SIZE) + 11:
+                        self.rect.centerx = next_pos.centerx
+                else:
+                    self.rect.centerx = next_pos.centerx
+
+            if self.speed == [0, 1]:
+                if not self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
+                    if next_pos.centery <= ((self.curr_tile[1] + 1) * TILE_SIZE) - 5:
+                        self.rect.centery = next_pos.centery
+                else:
+                    self.rect.centery = next_pos.centery
+
+            if self.speed == [0, -1]:
+                if not self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
+                    if next_pos.centery >= ((self.curr_tile[1] - 1) * TILE_SIZE) + 11:
+                        self.rect.centery = next_pos.centery
+                else:
+                    self.rect.centery = next_pos.centery
 
         self._update_tile()
-
-        print(self.curr_tile)
 
 
     def _move(self, direction):
