@@ -1,5 +1,6 @@
 import os
 import sys
+from numpy.lib.shape_base import tile
 import pygame
 import numpy as np
 from pygame.constants import RLEACCEL, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE
@@ -7,7 +8,55 @@ from pygame.constants import RLEACCEL, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE
 
 WINDOW = X, Y = 224, 288
 TILE_SIZE = 8
-TILE_X, TILE_Y = X // TILE_SIZE, Y // TILE_SIZE 
+TILE_X, TILE_Y = X // TILE_SIZE, Y // TILE_SIZE
+
+
+tile_map = np.zeros((X // TILE_SIZE, Y // TILE_SIZE, 2), dtype = bool)
+
+legal_tile = {
+    0: None,
+    1: None,
+    2: None,
+    3: None,
+    4: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+    5: [1, 6, 12, 15, 21, 26],
+    6: [1, 6, 12, 15, 21, 26],
+    7: [1, 6, 12, 15, 21, 26],
+    8: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+    9: [1, 6, 9, 18, 21, 26],
+    10: [1, 6, 9, 18, 21, 26],
+    11: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26],
+    12: [6, 12, 15, 21],
+    13: [6, 12, 15, 21],
+    14: [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21],
+    15: [6, 9, 18, 21],
+    16: [6, 9, 18, 21],
+    17: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    18: [6, 9, 18, 21],
+    19: [6, 9, 18, 21],
+    20: [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21],
+    21: [6, 9, 18, 21],
+    22: [6, 9, 18, 21],
+    23: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+    24: [1, 6, 12, 15, 21, 26],
+    25: [1, 6, 12, 15, 21, 26],
+    26: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26],
+    27: [3, 6, 9, 18, 21, 24],
+    28: [3, 6, 9, 18, 21, 24],
+    29: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26],
+    30: [1, 12, 15, 26],
+    31: [1, 12, 15, 26],
+    32: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+    33: None,
+    34: None,
+    35: None,
+}
+
+for y in range(TILE_Y):
+    if legal_tile[y] is not None:
+        for x in range(TILE_X):
+            if x in legal_tile[y]:
+                tile_map[x, y] = (True, True)
 
 
 def load_image(file, colorkey=None):
@@ -100,7 +149,11 @@ class Pacman(pygame.sprite.Sprite):
                 self.curr_x = 2
 
         self.image = self.sprite_arr[self.curr_y][self.curr_x]
-        self.rect = self.rect.move((self.speed[0], self.speed[1]))
+
+        next_pos = self.rect.move((self.speed[0], self.speed[1]))
+
+        if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
+            self.rect = self.rect.move((self.speed[0], self.speed[1]))
 
         self._update_tile()
 
@@ -121,11 +174,18 @@ class Pacman(pygame.sprite.Sprite):
 
 
     def _update_tile(self):
-        if (self.curr_tile[0] != self.rect.x // TILE_SIZE):
-            self.curr_tile[0] = self.rect.x // TILE_SIZE
+        if (self.curr_tile[0] != self.rect.centerx // TILE_SIZE):
+            self.curr_tile[0] = self.rect.centerx // TILE_SIZE
         
-        if (self.curr_tile[1] != self.rect.y // TILE_SIZE):
-            self.curr_tile[1] = self.rect.y // TILE_SIZE
+        if (self.curr_tile[1] != self.rect.centery // TILE_SIZE):
+            self.curr_tile[1] = self.rect.centery // TILE_SIZE
+
+
+    def _is_legal(self, x, y):
+        if np.all(tile_map[x, y]):
+            return True
+        else:
+            return False
 
 
 class Ghost(pygame.sprite.Sprite):
@@ -140,54 +200,6 @@ class Ghost(pygame.sprite.Sprite):
 
     def update(self):
         pass
-
-
-tile_map = np.zeros((X // TILE_SIZE, Y // TILE_SIZE, 2), dtype = np.uint8)
-
-legal_tile = {
-    0: None,
-    1: None,
-    2: None,
-    3: None,
-    4: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
-    5: [1, 6, 12, 15, 21, 26],
-    6: [1, 6, 12, 15, 21, 26],
-    7: [1, 6, 12, 15, 21, 26],
-    8: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
-    9: [1, 6, 9, 18, 21, 26],
-    10: [1, 6, 9, 18, 21, 26],
-    11: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26],
-    12: [6, 12, 15, 21],
-    13: [6, 12, 15, 21],
-    14: [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21],
-    15: [6, 9, 18, 21],
-    16: [6, 9, 18, 21],
-    17: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
-    18: [6, 9, 18, 21],
-    19: [6, 9, 18, 21],
-    20: [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21],
-    21: [6, 9, 18, 21],
-    22: [6, 9, 18, 21],
-    23: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
-    24: [1, 6, 12, 15, 21, 26],
-    25: [1, 6, 12, 15, 21, 26],
-    26: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26],
-    27: [3, 6, 9, 18, 21, 24],
-    28: [3, 6, 9, 18, 21, 24],
-    29: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26],
-    30: [1, 12, 15, 26],
-    31: [1, 12, 15, 26],
-    32: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
-    33: None,
-    34: None,
-    35: None,
-}
-
-for y in range(TILE_Y):
-    if legal_tile[y] is not None:
-        for x in range(TILE_X):
-            if x in legal_tile[y]:
-                tile_map[x, y] = (1, 1)
 
 
 if __name__ == "__main__":
