@@ -1,3 +1,6 @@
+# Huge thanks to this document outlining Pac-Man's game mechanics and logic
+# https://www.gamasutra.com/view/feature/3938/the_pacman_dossier.php
+
 import os
 import sys
 from numpy.lib.shape_base import tile
