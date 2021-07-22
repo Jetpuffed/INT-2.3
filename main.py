@@ -144,7 +144,7 @@ class Pacman(pygame.sprite.Sprite):
 
     def update(self):
         self.timer += 1
-        if self.timer == 2:
+        if self.timer == 3:
             self.timer = 0
             self.curr_x -= 1
             if self.curr_x < 0:
@@ -168,10 +168,10 @@ class Pacman(pygame.sprite.Sprite):
             (self.curr_tile[1] * TILE_SIZE) + 3,
         )
 
-        print("Current tile: " + str(self.curr_tile))
-        print("Current position (x, y): " + str((self.curr_tile[0] * TILE_SIZE, self.curr_tile[1] * TILE_SIZE)))
-        print("Center of tile (x, y): " + str(center_tile))
-        print("Next position (x, y): " + str(next_pos.center) + "\n")
+        # print("Current tile: " + str(self.curr_tile))
+        # print("Current position (x, y): " + str((self.curr_tile[0] * TILE_SIZE, self.curr_tile[1] * TILE_SIZE)))
+        # print("Center of tile (x, y): " + str(center_tile))
+        # print("Next position (x, y): " + str(next_pos.center) + "\n")
 
         if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
             if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):
@@ -239,12 +239,36 @@ class Ghost(pygame.sprite.Sprite):
     """
 
     def __init__(self):
+        self.WIDTH, self.HEIGHT = 14, 14
+        self.SPRITE_X = [0, 14]
+        self.SPRITE_Y = [0, 14, 28, 42]
+
+        self.behavior = None  # Behaviors are: CHASE, SCATTER, and FRIGHTENED
+
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
-        self.image, self.rect = load_image("ghost.bmp")
-    
+        self.sprite_arr = [[get_sprite("ghost.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
+
+        self.curr_y, self.curr_x = 0, 0
+        self.curr_tile = [14, 14]
+        self.image = self.sprite_arr[self.curr_y][self.curr_x]
+
+        self.rect = self.image.get_rect()
+        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + 4, (self.curr_tile[1] * TILE_SIZE) + 4
+
+        self.speed = [1, 0]
+        self.timer = 0
+
 
     def update(self):
-        pass
+        self.timer += 1
+        if self.timer == 8:
+            self.timer = 0
+            if self.curr_x == 0:
+                self.curr_x = 1
+            else:
+                self.curr_x = 0
+        
+        self.image = self.sprite_arr[self.curr_y][self.curr_x]
 
 
 if __name__ == "__main__":
@@ -256,7 +280,8 @@ if __name__ == "__main__":
     board = load_image("board.bmp")
 
     pacman = Pacman()
-    sprites = pygame.sprite.RenderClear((pacman))
+    ghost = Ghost()
+    sprites = pygame.sprite.RenderClear((pacman, ghost))
 
     clock = pygame.time.Clock()
 
