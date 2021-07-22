@@ -233,6 +233,10 @@ class Pacman(pygame.sprite.Sprite):
             return False
 
 
+    def get_current_tile(self):
+        return self.curr_tile
+
+
 class Ghost(pygame.sprite.Sprite):
     """
     TODO: Make this an elegant and descriptive docstring...
@@ -281,8 +285,8 @@ if __name__ == "__main__":
     board = load_image("board.bmp")
 
     pacman = Pacman()
-    ghost = Ghost()
-    sprites = pygame.sprite.RenderClear((pacman, ghost))
+    blinky = Ghost(0)
+    sprites = pygame.sprite.RenderClear((pacman, blinky))
 
     clock = pygame.time.Clock()
 
