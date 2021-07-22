@@ -307,36 +307,44 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centery = next_pos.centery
                     elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1] - 1)):
                         self.rect.centerx = next_pos.centerx
+                        self.speed = [-1, 0]
                     elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] - 1)):
                         self.rect.centerx = next_pos.centerx
+                        self.speed = [1, 0]
 
                 if (self.speed == [-1, 0]) and (next_pos.centery == center_tile[1]):  # left
                     up, left, down = self.curr_tile[1] - 1, self.curr_tile[0] - 2, self.curr_tile[1] + 1
 
                     if (up > target[1]) and (self._is_legal(self.curr_tile[0] - 1, up)):
                         self.rect.centery = next_pos.centery
+                        self.speed = [0, -1]
                     elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1])):
                         self.rect.centerx = next_pos.centerx
                     elif (down < target[1]) and (self._is_legal(self.curr_tile[0] - 1, down)):
                         self.rect.centery = next_pos.centery
+                        self.speed = [0, 1]
 
                 if (self.speed == [0, 1]) and (next_pos.centerx == center_tile[0]):  # down
                     left, down, right = self.curr_tile[0] - 1, self.curr_tile[1] + 2, self.curr_tile[0] + 1
 
                     if (left > target[0]) and (self._is_legal(left, self.curr_tile[1] + 1)):
                         self.rect.centerx = next_pos.centerx
+                        self.speed = [-1, 0]
                     elif (down < target[1]) and (self._is_legal(self.curr_tile[0], down)):
                         self.rect.centery = next_pos.centery
                     elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] + 1)):
                         self.rect.centerx = next_pos.centerx
+                        self.speed = [1, 0]
 
                 if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):  # right
                     up, down, right = self.curr_tile[1] - 1, self.curr_tile[1] + 1, self.curr_tile[0] + 2
 
                     if (up > target[1]) and (self._is_legal(self.curr_tile[0] + 1, up)):
                         self.rect.centery = next_pos.centery
+                        self.speed = [0, -1]
                     elif (down < target[1]) and (self._is_legal(self.curr_tile[0] + 1, down)):
                         self.rect.centery = next_pos.centery
+                        self.speed = [0, 1]
                     elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1])):
                         self.rect.centerx = next_pos.centerx
 
