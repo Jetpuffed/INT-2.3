@@ -297,6 +297,14 @@ class Ghost(pygame.sprite.Sprite):
             pass
 
 
+    def _update_tile(self):
+        if (self.curr_tile[0] != self.rect.centerx // TILE_SIZE):
+            self.curr_tile[0] = self.rect.centerx // TILE_SIZE
+        
+        if (self.curr_tile[1] != self.rect.centery // TILE_SIZE):
+            self.curr_tile[1] = self.rect.centery // TILE_SIZE
+
+
     def _is_legal(self, x, y):
         if np.all(tile_map[x, y]):
             return True
