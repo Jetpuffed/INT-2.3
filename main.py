@@ -9,6 +9,8 @@ from pygame.constants import RLEACCEL, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE
 WINDOW = X, Y = 224, 288
 TILE_SIZE = 8
 TILE_X, TILE_Y = X // TILE_SIZE, Y // TILE_SIZE
+DOTS = 240
+BIG_DOTS = 4
 
 
 tile_map = np.zeros((X // TILE_SIZE, Y // TILE_SIZE, 2), dtype = bool)
@@ -134,8 +136,7 @@ class Pacman(pygame.sprite.Sprite):
         self.area = screen.get_rect()
 
         self.rect = self.image.get_rect()
-        self.padding = 4
-        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + self.padding, (self.curr_tile[1] * TILE_SIZE) + self.padding
+        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + 3, (self.curr_tile[1] * TILE_SIZE) + 3
 
         self.speed = [1, 0]
         self.timer = 0
@@ -153,29 +154,48 @@ class Pacman(pygame.sprite.Sprite):
 
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
 
+        if next_pos.right == X:
+            next_pos.left = 1
+            self.rect.left = 1
+            self._update_tile()
+        elif next_pos.left == 0:
+            next_pos.right = X - 1
+            self.rect.right = X - 1
+            self._update_tile()
+
+        center_tile = (
+            (self.curr_tile[0] * TILE_SIZE) + 3,
+            (self.curr_tile[1] * TILE_SIZE) + 3,
+        )
+
+        print("Current tile: " + str(self.curr_tile))
+        print("Current position (x, y): " + str((self.curr_tile[0] * TILE_SIZE, self.curr_tile[1] * TILE_SIZE)))
+        print("Center of tile (x, y): " + str(center_tile))
+        print("Next position (x, y): " + str(next_pos.center) + "\n")
+
         if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
-            if self.speed == [1, 0]:
+            if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):
                 if not self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
                     if next_pos.centerx <= ((self.curr_tile[0] + 1) * TILE_SIZE) - 5:
                         self.rect.centerx = next_pos.centerx
                 else:
                     self.rect.centerx = next_pos.centerx
 
-            if self.speed == [-1, 0]:
+            if (self.speed == [-1, 0]) and (next_pos.centery == center_tile[1]):
                 if not self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
                     if next_pos.centerx >= ((self.curr_tile[0] - 1) * TILE_SIZE) + 11:
                         self.rect.centerx = next_pos.centerx
                 else:
                     self.rect.centerx = next_pos.centerx
 
-            if self.speed == [0, 1]:
+            if (self.speed == [0, 1]) and (next_pos.centerx == center_tile[0]):
                 if not self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
                     if next_pos.centery <= ((self.curr_tile[1] + 1) * TILE_SIZE) - 5:
                         self.rect.centery = next_pos.centery
                 else:
                     self.rect.centery = next_pos.centery
 
-            if self.speed == [0, -1]:
+            if (self.speed == [0, -1]) and (next_pos.centerx == center_tile[0]):
                 if not self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
                     if next_pos.centery >= ((self.curr_tile[1] - 1) * TILE_SIZE) + 11:
                         self.rect.centery = next_pos.centery
