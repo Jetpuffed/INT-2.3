@@ -238,11 +238,12 @@ class Ghost(pygame.sprite.Sprite):
     TODO: Make this an elegant and descriptive docstring...
     """
 
-    def __init__(self):
+    def __init__(self, ghost_id):
         self.WIDTH, self.HEIGHT = 14, 14
         self.SPRITE_X = [0, 14]
         self.SPRITE_Y = [0, 14, 28, 42]
 
+        self.ghost = ["BLINKY", "PINKY", "INKY", "CLYDE"][ghost_id]  # Selects respective ghost from list
         self.behavior = None  # Behaviors are: CHASE, SCATTER, and FRIGHTENED
 
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
