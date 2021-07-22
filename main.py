@@ -275,6 +275,34 @@ class Ghost(pygame.sprite.Sprite):
         
         self.image = self.sprite_arr[self.curr_y][self.curr_x]
 
+        next_pos = self.rect.move((self.speed[0], self.speed[1]))
+
+        if next_pos.right == X:
+            next_pos.left = 1
+            self.rect.left = 1
+            self._update_tile()
+        elif next_pos.left == 0:
+            next_pos.right = X - 1
+            self.rect.right = X - 1
+            self._update_tile()
+
+        center_tile = (
+            (self.curr_tile[0] * TILE_SIZE) + 4,
+            (self.curr_tile[1] * TILE_SIZE) + 4,
+        )
+
+
+    def _move(self, target=None):
+        if self.ghost == "BLINKY":
+            pass
+
+
+    def _is_legal(self, x, y):
+        if np.all(tile_map[x, y]):
+            return True
+        else:
+            return False
+
 
 if __name__ == "__main__":
     pygame.init()  # Initializes pygame
