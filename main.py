@@ -278,7 +278,14 @@ class Ghost(pygame.sprite.Sprite):
         
         self.image = self.sprite_arr[self.curr_y][self.curr_x]
 
+
+    def _move(self, target=None):
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
+
+        center_tile = (
+            (self.curr_tile[0] * TILE_SIZE) + 4,
+            (self.curr_tile[1] * TILE_SIZE) + 4,
+        )
 
         if next_pos.right == X:
             next_pos.left = 1
@@ -289,15 +296,49 @@ class Ghost(pygame.sprite.Sprite):
             self.rect.right = X - 1
             self._update_tile()
 
-        center_tile = (
-            (self.curr_tile[0] * TILE_SIZE) + 4,
-            (self.curr_tile[1] * TILE_SIZE) + 4,
-        )
-
-
-    def _move(self, target=None):
         if self.ghost == "BLINKY":
-            pass
+            if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
+
+                # Ghosts select an exit based on this priority: up, left, down, or right
+                if (self.speed == [0, -1]) and (next_pos.centerx == center_tile[0]):  # up
+                    up, left, right = self.curr_tile[1] - 2, self.curr_tile[0] - 1, self.curr_tile[0] + 1
+
+                    if (up > target[1]) and (self._is_legal(self.curr_tile[0], up)):
+                        self.rect.centery = next_pos.centery
+                    elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1] - 1)):
+                        self.rect.centerx = next_pos.centerx
+                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] - 1)):
+                        self.rect.centerx = next_pos.centerx
+
+                if (self.speed == [-1, 0]) and (next_pos.centery == center_tile[1]):  # left
+                    up, left, down = self.curr_tile[1] - 1, self.curr_tile[0] - 2, self.curr_tile[1] + 1
+
+                    if (up > target[1]) and (self._is_legal(self.curr_tile[0] - 1, up)):
+                        self.rect.centery = next_pos.centery
+                    elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1])):
+                        self.rect.centerx = next_pos.centerx
+                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0] - 1, down)):
+                        self.rect.centery = next_pos.centery
+
+                if (self.speed == [0, 1]) and (next_pos.centerx == center_tile[0]):  # down
+                    left, down, right = self.curr_tile[0] - 1, self.curr_tile[1] + 2, self.curr_tile[0] + 1
+
+                    if (left > target[0]) and (self._is_legal(left, self.curr_tile[1] + 1)):
+                        self.rect.centerx = next_pos.centerx
+                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0], down)):
+                        self.rect.centery = next_pos.centery
+                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] + 1)):
+                        self.rect.centerx = next_pos.centerx
+
+                if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):  # right
+                    up, down, right = self.curr_tile[1] - 1, self.curr_tile[1] + 1, self.curr_tile[0] + 2
+
+                    if (up > target[1]) and (self._is_legal(self.curr_tile[0] + 1, up)):
+                        self.rect.centery = next_pos.centery
+                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0] + 1, down)):
+                        self.rect.centery = next_pos.centery
+                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1])):
+                        self.rect.centerx = next_pos.centerx
 
 
     def _update_tile(self):
