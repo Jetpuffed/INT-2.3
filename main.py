@@ -300,7 +300,7 @@ class Ghost(pygame.sprite.Sprite):
             if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
 
                 # Ghosts select an exit based on this priority: up, left, down, or right
-                if (self.speed == [0, -1]) and (next_pos.centerx == center_tile[0]):  # up
+                if (self.speed == [0, -1]):  # up
                     up, left, right = self.curr_tile[1] - 2, self.curr_tile[0] - 1, self.curr_tile[0] + 1
 
                     if (up > target[1]) and (self._is_legal(self.curr_tile[0], up)):
@@ -313,8 +313,10 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centerx = next_pos.centerx
                         self.curr_y = 0
                         self.speed = [1, 0]
+                    
+                    self._update_tile()
 
-                if (self.speed == [-1, 0]) and (next_pos.centery == center_tile[1]):  # left
+                if (self.speed == [-1, 0]):  # left
                     up, left, down = self.curr_tile[1] - 1, self.curr_tile[0] - 2, self.curr_tile[1] + 1
 
                     if (up > target[1]) and (self._is_legal(self.curr_tile[0] - 1, up)):
@@ -327,8 +329,10 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centery = next_pos.centery
                         self.curr_y = 1
                         self.speed = [0, 1]
+                    
+                    self._update_tile()
 
-                if (self.speed == [0, 1]) and (next_pos.centerx == center_tile[0]):  # down
+                if (self.speed == [0, 1]):  # down
                     left, down, right = self.curr_tile[0] - 1, self.curr_tile[1] + 2, self.curr_tile[0] + 1
 
                     if (left > target[0]) and (self._is_legal(left, self.curr_tile[1] + 1)):
@@ -341,8 +345,10 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centerx = next_pos.centerx
                         self.curr_y = 0
                         self.speed = [1, 0]
+                    
+                    self._update_tile()
 
-                if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):  # right
+                if (self.speed == [1, 0]):  # right
                     up, down, right = self.curr_tile[1] - 1, self.curr_tile[1] + 1, self.curr_tile[0] + 2
 
                     if (up > target[1]) and (self._is_legal(self.curr_tile[0] + 1, up)):
@@ -355,6 +361,8 @@ class Ghost(pygame.sprite.Sprite):
                         self.speed = [0, 1]
                     elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1])):
                         self.rect.centerx = next_pos.centerx
+                    
+                    self._update_tile()
 
 
     def _update_tile(self):
@@ -391,6 +399,8 @@ if __name__ == "__main__":
 
         screen.fill((0,0,0))
         screen.blit(*board)
+
+        blinky._move(pacman.get_current_tile())
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
