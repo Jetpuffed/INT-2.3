@@ -232,7 +232,7 @@ class Pacman(pygame.sprite.Sprite):
                     else:
                         self.speed = [0, 0]
 
-        self._update_tile()
+        self.curr_tile = self._update_tile()
 
 
     def move(self, direction):
@@ -240,7 +240,8 @@ class Pacman(pygame.sprite.Sprite):
 
             if ((self.speed == [-1, 0]) or (self.speed == [1, 0])) and (self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1)):  # west -> north <- east
 
-                pos = (self.rect.centerx - self.curr_center[0])
+                center = ((self.rect.centerx // TILE_SIZE) * TILE_SIZE) + self.CENTER_Y
+                pos = (self.rect.centerx - center)
 
                 if pos < 0:  # pre-turn if coming from west, post-turn if coming from east
                     for _ in range(abs(pos)):
@@ -256,7 +257,8 @@ class Pacman(pygame.sprite.Sprite):
 
             if ((self.speed == [0, -1]) or (self.speed == [0, 1])) and (self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1])):  # north -> west <- south
                 
-                pos = (self.rect.centery - self.curr_center[1])
+                center = ((self.rect.centery // TILE_SIZE) * TILE_SIZE) + self.CENTER_Y
+                pos = (self.rect.centery - center)
 
                 if pos < 0:  # pre-turn if coming from north, post-turn if coming from south
                     for _ in range(abs(pos)):
@@ -272,7 +274,8 @@ class Pacman(pygame.sprite.Sprite):
 
             if ((self.speed == [-1, 0]) or (self.speed == [1, 0])) and (self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1)):  # west -> south <- east
 
-                pos = (self.rect.centerx - self.curr_center[0])
+                center = ((self.rect.centerx // TILE_SIZE) * TILE_SIZE) + self.CENTER_X
+                pos = (self.rect.centerx - center)
 
                 if pos < 0:  # pre-turn if coming from west, post-turn if coming from east
                     for _ in range(abs(pos)):
@@ -288,13 +291,14 @@ class Pacman(pygame.sprite.Sprite):
 
             if ((self.speed == [0, -1]) or (self.speed == [0, 1])) and (self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1])):  # north -> east <- south
                 
-                pos = (self.rect.centery - self.curr_center[1])
+                center = ((self.rect.centery // TILE_SIZE) * TILE_SIZE) + self.CENTER_Y
+                pos = (self.rect.centery - center)
 
-                if pos < 0:  # pre-turn if coming from north, post-turn if coming from south
+                if pos < 0:  # pre-turn if coming from south, post-turn if coming from north
                     for _ in range(abs(pos)):
                         self.rect.center = (self.rect.centerx + 1, self.rect.centery + 1)
                 
-                if pos > 0:
+                if pos > 0:  # pre-turn if coming from north, post-turn if coming from south
                     for _ in range(pos):
                         self.rect.center = (self.rect.centerx + 1, self.rect.centery - 1)
 
@@ -311,11 +315,7 @@ class Pacman(pygame.sprite.Sprite):
 
 
     def _update_tile(self):
-        if (self.curr_tile[0] != self.rect.centerx // TILE_SIZE):
-            self.curr_tile[0] = self.rect.centerx // TILE_SIZE
-        
-        if (self.curr_tile[1] != self.rect.centery // TILE_SIZE):
-            self.curr_tile[1] = self.rect.centery // TILE_SIZE
+        return [self.rect.centerx // TILE_SIZE, self.rect.centery // TILE_SIZE]
 
 
     def _is_legal(self, x, y):
