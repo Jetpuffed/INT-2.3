@@ -3,7 +3,6 @@
 
 import os
 import sys
-from numpy.lib.shape_base import tile
 import pygame
 import numpy as np
 from pygame.constants import RLEACCEL, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE
@@ -123,102 +122,192 @@ class Pacman(pygame.sprite.Sprite):
     TODO: Make this an elegant and descriptive docstring...
     """
 
-    def __init__(self):
-        self.WIDTH, self.HEIGHT = 13, 13
-        self.SPRITE_X = [0, 13, 26]
-        self.SPRITE_Y = [0, 13, 26, 39]
+    WIDTH, HEIGHT = 13, 13
+    SPRITE_X, SPRITE_Y = [0, 13, 26], [0, 13, 26, 39]
+    CENTER_X, CENTER_Y = 3, 3
+    EAST, SOUTH, WEST, NORTH = 0, 1, 2, 3
+    FRAMES = (0, 1, 2)
+    LEFT_TUNNEL, RIGHT_TUNNEL = [0, 17], [27, 17]
 
+    def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
         self.sprite_arr = [[get_sprite("pacman.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
 
-        self.curr_y, self.curr_x = 0, 1
         self.curr_tile = [14, 26]
-        self.image = self.sprite_arr[self.curr_y][self.curr_x]
-        
-        screen = pygame.display.get_surface()
-        self.area = screen.get_rect()
+        self.curr_center = [
+            (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
+            (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
+        ]
+
+        self.direction, self.frame = self.EAST, self.FRAMES[2]
+        self.image = self.sprite_arr[self.direction][self.frame]
 
         self.rect = self.image.get_rect()
-        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + 3, (self.curr_tile[1] * TILE_SIZE) + 3
+        self.rect.center = self.curr_center
 
-        self.speed = [1, 0]
-        self.timer = 0
+        self.speed, self.multiplier = [1, 0], None
+        self.is_moving = False
+        
+        self.clock = 0
     
 
     def update(self):
-        self.timer += 1
-        if self.timer == 3:
-            self.timer = 0
-            self.curr_x -= 1
-            if self.curr_x < 0:
-                self.curr_x = 2
+        self.is_moving = True if not self.speed == [0, 0] else False
 
-        self.image = self.sprite_arr[self.curr_y][self.curr_x]
+
+        if self.is_moving:
+            self.clock += 1
+
+            if self.clock == 3:
+                self.clock = 0
+                self.frame -= 1
+
+                if self.frame not in self.FRAMES:
+                    self.frame = self.FRAMES[2]
+
+        self.image = self.sprite_arr[self.direction][self.frame]
+
+        self.curr_center = [
+            (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
+            (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
+        ]
 
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
 
-        if next_pos.right == X:
-            next_pos.left = 1
-            self.rect.left = 1
-            self._update_tile()
-        elif next_pos.left == 0:
-            next_pos.right = X - 1
-            self.rect.right = X - 1
-            self._update_tile()
+        if self.speed == [0, -1]:  # north
+            if self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
+                self.rect.centery = next_pos.centery
 
-        center_tile = (
-            (self.curr_tile[0] * TILE_SIZE) + 3,
-            (self.curr_tile[1] * TILE_SIZE) + 3,
-        )
-
-        # print("Current tile: " + str(self.curr_tile))
-        # print("Current position (x, y): " + str((self.curr_tile[0] * TILE_SIZE, self.curr_tile[1] * TILE_SIZE)))
-        # print("Center of tile (x, y): " + str(center_tile))
-        # print("Next position (x, y): " + str(next_pos.center) + "\n")
-
-        if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
-            if (self.speed == [1, 0]) and (next_pos.centery == center_tile[1]):
-                if not self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
-                    if next_pos.centerx <= ((self.curr_tile[0] + 1) * TILE_SIZE) - 5:
-                        self.rect.centerx = next_pos.centerx
+            else:
+                if self.curr_center[1] <= next_pos.centery:
+                    self.rect.centery = next_pos.centery
+                
                 else:
+                    self.speed = [0, 0]
+
+        if self.speed == [-1, 0]:  # west
+            if self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
+                self.rect.centerx = next_pos.centerx
+
+            else:
+                if (self.LEFT_TUNNEL >= self.curr_tile > [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]) or (self.RIGHT_TUNNEL < self.curr_tile <= [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]):
                     self.rect.centerx = next_pos.centerx
 
-            if (self.speed == [-1, 0]) and (next_pos.centery == center_tile[1]):
-                if not self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
-                    if next_pos.centerx >= ((self.curr_tile[0] - 1) * TILE_SIZE) + 11:
-                        self.rect.centerx = next_pos.centerx
+                elif self.curr_tile == [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]:
+                    self.rect.centerx = self._get_tile_coord((self.RIGHT_TUNNEL[0] + 3, self.RIGHT_TUNNEL[1]))[0]
+
                 else:
+                    if self.curr_center[0] <= next_pos.centerx:
+                        self.rect.centerx = next_pos.centerx
+                    
+                    else:
+                        self.speed = [0, 0]
+
+        if self.speed == [0, 1]:  # south
+            if self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
+                self.rect.centery = next_pos.centery
+
+            else:
+                if self.curr_center[1] >= next_pos.centery:
+                    self.rect.centery = next_pos.centery
+                
+                else:
+                    self.speed = [0, 0]
+
+        if self.speed == [1, 0]:  # east
+            if self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
+                self.rect.centerx = next_pos.centerx
+
+            else:
+                if (self.RIGHT_TUNNEL <= self.curr_tile < [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]) or (self.LEFT_TUNNEL > self.curr_tile >= [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]):
                     self.rect.centerx = next_pos.centerx
 
-            if (self.speed == [0, 1]) and (next_pos.centerx == center_tile[0]):
-                if not self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
-                    if next_pos.centery <= ((self.curr_tile[1] + 1) * TILE_SIZE) - 5:
-                        self.rect.centery = next_pos.centery
+                elif self.curr_tile == [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]:
+                    self.rect.centerx = self._get_tile_coord((self.LEFT_TUNNEL[0] - 3, self.LEFT_TUNNEL[1]))[0]
+                
                 else:
-                    self.rect.centery = next_pos.centery
-
-            if (self.speed == [0, -1]) and (next_pos.centerx == center_tile[0]):
-                if not self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
-                    if next_pos.centery >= ((self.curr_tile[1] - 1) * TILE_SIZE) + 11:
-                        self.rect.centery = next_pos.centery
-                else:
-                    self.rect.centery = next_pos.centery
+                    if self.curr_center[0] >= next_pos.centerx:
+                        self.rect.centerx = next_pos.centerx
+                    
+                    else:
+                        self.speed = [0, 0]
 
         self._update_tile()
 
 
-    def _move(self, direction):
-        compass = {
-            "north": [[0, -1], 3],
-            "south": [[0, 1], 1],
-            "east": [[1, 0], 0],
-            "west": [[-1, 0], 2],
-        }
+    def move(self, direction):
+        if direction == "north":
 
-        if compass[direction] != self.speed:
-            self.curr_y = compass[direction][1]
-            self.speed = compass[direction][0]
+            if ((self.speed == [-1, 0]) or (self.speed == [1, 0])) and (self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1)):  # west -> north <- east
+
+                pos = (self.rect.centerx - self.curr_center[0])
+
+                if pos < 0:  # pre-turn if coming from west, post-turn if coming from east
+                    for _ in range(abs(pos)):
+                        self.rect.center = (self.rect.centerx + 1, self.rect.centery - 1)
+
+                if pos > 0:  # pre-turn if coming from east, post-turn if coming from west
+                    for _ in range(pos):
+                        self.rect.center = (self.rect.centerx - 1, self.rect.centery - 1)
+
+            self.speed, self.direction = [0, -1], self.NORTH
+
+        if direction == "west":
+
+            if ((self.speed == [0, -1]) or (self.speed == [0, 1])) and (self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1])):  # north -> west <- south
+                
+                pos = (self.rect.centery - self.curr_center[1])
+
+                if pos < 0:  # pre-turn if coming from north, post-turn if coming from south
+                    for _ in range(abs(pos)):
+                        self.rect.center = (self.rect.centerx - 1, self.rect.centery + 1)
+                
+                if pos > 0:  # pre-turn if coming from south, post-turn if coming from north
+                    for _ in range(pos):
+                        self.rect.center = (self.rect.centerx - 1, self.rect.centery - 1)
+
+            self.speed, self.direction = [-1, 0], self.WEST
+
+        if direction == "south":
+
+            if ((self.speed == [-1, 0]) or (self.speed == [1, 0])) and (self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1)):  # west -> south <- east
+
+                pos = (self.rect.centerx - self.curr_center[0])
+
+                if pos < 0:  # pre-turn if coming from west, post-turn if coming from east
+                    for _ in range(abs(pos)):
+                        self.rect.center = (self.rect.centerx + 1, self.rect.centery + 1)
+
+                if pos > 0:  # pre-turn if coming from east, post-turn if coming from west
+                    for _ in range(pos):
+                        self.rect.center = (self.rect.centerx - 1, self.rect.centery + 1)
+
+            self.speed, self.direction = [0, 1], self.SOUTH
+
+        if direction == "east":
+
+            if ((self.speed == [0, -1]) or (self.speed == [0, 1])) and (self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1])):  # north -> east <- south
+                
+                pos = (self.rect.centery - self.curr_center[1])
+
+                if pos < 0:  # pre-turn if coming from north, post-turn if coming from south
+                    for _ in range(abs(pos)):
+                        self.rect.center = (self.rect.centerx + 1, self.rect.centery + 1)
+                
+                if pos > 0:
+                    for _ in range(pos):
+                        self.rect.center = (self.rect.centerx + 1, self.rect.centery - 1)
+
+            self.speed, self.direction = [1, 0], self.EAST
+
+
+    def get_current_tile(self):
+        return self.curr_tile
+
+
+    def _get_tile_coord(self, tile):
+        x, y = (tile[0] * TILE_SIZE), (tile[1] * TILE_SIZE)
+        return [x, y]
 
 
     def _update_tile(self):
@@ -230,14 +319,15 @@ class Pacman(pygame.sprite.Sprite):
 
 
     def _is_legal(self, x, y):
-        if np.all(tile_map[x, y]):
-            return True
-        else:
+        if (x < self.LEFT_TUNNEL[0]) or (x > self.RIGHT_TUNNEL[0]):
             return False
+        
+        else:
+            if np.all(tile_map[x, y]):
+                return True
 
-
-    def get_current_tile(self):
-        return self.curr_tile
+            else:
+                return False
 
 
 class Ghost(pygame.sprite.Sprite):
@@ -313,8 +403,6 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centerx = next_pos.centerx
                         self.curr_y = 0
                         self.speed = [1, 0]
-                    
-                    self._update_tile()
 
                 if (self.speed == [-1, 0]):  # left
                     up, left, down = self.curr_tile[1] - 1, self.curr_tile[0] - 2, self.curr_tile[1] + 1
@@ -329,8 +417,6 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centery = next_pos.centery
                         self.curr_y = 1
                         self.speed = [0, 1]
-                    
-                    self._update_tile()
 
                 if (self.speed == [0, 1]):  # down
                     left, down, right = self.curr_tile[0] - 1, self.curr_tile[1] + 2, self.curr_tile[0] + 1
@@ -345,8 +431,6 @@ class Ghost(pygame.sprite.Sprite):
                         self.rect.centerx = next_pos.centerx
                         self.curr_y = 0
                         self.speed = [1, 0]
-                    
-                    self._update_tile()
 
                 if (self.speed == [1, 0]):  # right
                     up, down, right = self.curr_tile[1] - 1, self.curr_tile[1] + 1, self.curr_tile[0] + 2
@@ -362,7 +446,7 @@ class Ghost(pygame.sprite.Sprite):
                     elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1])):
                         self.rect.centerx = next_pos.centerx
                     
-                    self._update_tile()
+                self._update_tile()
 
 
     def _update_tile(self):
@@ -411,16 +495,16 @@ if __name__ == "__main__":
                     sys.exit()
 
                 if event.key == K_UP:
-                    pacman._move("north")
+                    pacman.move("north")
 
                 if event.key == K_DOWN:
-                    pacman._move("south")
+                    pacman.move("south")
 
                 if event.key == K_LEFT:
-                    pacman._move("west")
+                    pacman.move("west")
 
                 if event.key == K_RIGHT:
-                    pacman._move("east")
+                    pacman.move("east")
 
         sprites.update()
         sprites.draw(screen)
