@@ -335,133 +335,135 @@ class Ghost(pygame.sprite.Sprite):
     TODO: Make this an elegant and descriptive docstring...
     """
 
-    def __init__(self, ghost_id):
-        self.WIDTH, self.HEIGHT = 14, 14
-        self.SPRITE_X = [0, 14]
-        self.SPRITE_Y = [0, 14, 28, 42]
+    WIDTH, HEIGHT = 14, 14
+    SPRITE_X, SPRITE_Y = [0, 14], [0, 14, 28, 42]
+    CENTER_X, CENTER_Y = 4, 4
+    EAST, SOUTH, WEST, NORTH = 0, 1, 2, 3
+    FRAMES = (0, 1)
+    LEFT_TUNNEL, RIGHT_TUNNEL = [0, 17], [27, 17]
 
+    def __init__(self, ghost_id):
         self.ghost = ["BLINKY", "PINKY", "INKY", "CLYDE"][ghost_id]  # Selects respective ghost from list
         self.behavior = None  # Behaviors are: CHASE, SCATTER, and FRIGHTENED
 
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
         self.sprite_arr = [[get_sprite("ghost.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
 
-        self.curr_y, self.curr_x = 0, 0
         self.curr_tile = [14, 14]
-        self.image = self.sprite_arr[self.curr_y][self.curr_x]
+        self.curr_center = [
+            (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
+            (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
+        ]
+
+        self.direction, self.frame = self.EAST, self.FRAMES[0]
+        self.image = self.sprite_arr[self.direction][self.frame]
 
         self.rect = self.image.get_rect()
-        self.rect.center = (self.curr_tile[0] * TILE_SIZE) + 4, (self.curr_tile[1] * TILE_SIZE) + 4
+        self.rect.center = self.curr_center
 
-        self.speed = [1, 0]
-        self.timer = 0
+        self.speed, self.multiplier = [1, 0], None
+        
+        self.clock = 0
 
 
     def update(self):
-        self.timer += 1
-        if self.timer == 8:
-            self.timer = 0
-            if self.curr_x == 0:
-                self.curr_x = 1
-            else:
-                self.curr_x = 0
-        
-        self.image = self.sprite_arr[self.curr_y][self.curr_x]
+        self.clock += 1
 
+        if self.clock == 6:
+            self.clock = 0
+            self.frame -= 1
 
-    def _move(self, target=None):
+            if self.frame not in self.FRAMES:
+                self.frame = self.FRAMES[1]
+
+        self.image = self.sprite_arr[self.direction][self.frame]
+
+        self.curr_center = [
+            (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
+            (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
+        ]
+
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
 
-        center_tile = (
-            (self.curr_tile[0] * TILE_SIZE) + 4,
-            (self.curr_tile[1] * TILE_SIZE) + 4,
-        )
+        if self.speed == [0, -1]:  # north
+            if self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
+                self.rect.centery = next_pos.centery
 
-        if next_pos.right == X:
-            next_pos.left = 1
-            self.rect.left = 1
-            self._update_tile()
-        elif next_pos.left == 0:
-            next_pos.right = X - 1
-            self.rect.right = X - 1
-            self._update_tile()
+            else:
+                if self.curr_center[1] <= next_pos.centery:
+                    self.rect.centery = next_pos.centery
+                
+                else:
+                    self.speed = [0, 0]
 
-        if self.ghost == "BLINKY":
-            if self._is_legal(next_pos.centerx // TILE_SIZE, next_pos.centery // TILE_SIZE):
+        if self.speed == [-1, 0]:  # west
+            if self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
+                self.rect.centerx = next_pos.centerx
 
-                # Ghosts select an exit based on this priority: up, left, down, or right
-                if (self.speed == [0, -1]):  # up
-                    up, left, right = self.curr_tile[1] - 2, self.curr_tile[0] - 1, self.curr_tile[0] + 1
+            else:
+                if (self.LEFT_TUNNEL >= self.curr_tile > [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]) or (self.RIGHT_TUNNEL < self.curr_tile <= [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]):
+                    self.rect.centerx = next_pos.centerx
 
-                    if (up > target[1]) and (self._is_legal(self.curr_tile[0], up)):
-                        self.rect.centery = next_pos.centery
-                    elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1] - 1)):
-                        self.rect.centerx = next_pos.centerx
-                        self.curr_y = 2
-                        self.speed = [-1, 0]
-                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] - 1)):
-                        self.rect.centerx = next_pos.centerx
-                        self.curr_y = 0
-                        self.speed = [1, 0]
+                elif self.curr_tile == [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]:
+                    self.rect.centerx = self._get_tile_coord((self.RIGHT_TUNNEL[0] + 3, self.RIGHT_TUNNEL[1]))[0]
 
-                if (self.speed == [-1, 0]):  # left
-                    up, left, down = self.curr_tile[1] - 1, self.curr_tile[0] - 2, self.curr_tile[1] + 1
-
-                    if (up > target[1]) and (self._is_legal(self.curr_tile[0] - 1, up)):
-                        self.rect.centery = next_pos.centery
-                        self.curr_y = 3
-                        self.speed = [0, -1]
-                    elif (left > target[0]) and (self._is_legal(left, self.curr_tile[1])):
-                        self.rect.centerx = next_pos.centerx
-                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0] - 1, down)):
-                        self.rect.centery = next_pos.centery
-                        self.curr_y = 1
-                        self.speed = [0, 1]
-
-                if (self.speed == [0, 1]):  # down
-                    left, down, right = self.curr_tile[0] - 1, self.curr_tile[1] + 2, self.curr_tile[0] + 1
-
-                    if (left > target[0]) and (self._is_legal(left, self.curr_tile[1] + 1)):
-                        self.rect.centerx = next_pos.centerx
-                        self.curr_y = 2
-                        self.speed = [-1, 0]
-                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0], down)):
-                        self.rect.centery = next_pos.centery
-                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1] + 1)):
-                        self.rect.centerx = next_pos.centerx
-                        self.curr_y = 0
-                        self.speed = [1, 0]
-
-                if (self.speed == [1, 0]):  # right
-                    up, down, right = self.curr_tile[1] - 1, self.curr_tile[1] + 1, self.curr_tile[0] + 2
-
-                    if (up > target[1]) and (self._is_legal(self.curr_tile[0] + 1, up)):
-                        self.rect.centery = next_pos.centery
-                        self.curr_y = 3
-                        self.speed = [0, -1]
-                    elif (down < target[1]) and (self._is_legal(self.curr_tile[0] + 1, down)):
-                        self.rect.centery = next_pos.centery
-                        self.curr_y = 1
-                        self.speed = [0, 1]
-                    elif (right < target[0]) and (self._is_legal(right, self.curr_tile[1])):
+                else:
+                    if self.curr_center[0] <= next_pos.centerx:
                         self.rect.centerx = next_pos.centerx
                     
-                self._update_tile()
+                    else:
+                        self.speed = [0, 0]
+
+        if self.speed == [0, 1]:  # south
+            if self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
+                self.rect.centery = next_pos.centery
+
+            else:
+                if self.curr_center[1] >= next_pos.centery:
+                    self.rect.centery = next_pos.centery
+                
+                else:
+                    self.speed = [0, 0]
+
+        if self.speed == [1, 0]:  # east
+            if self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
+                self.rect.centerx = next_pos.centerx
+
+            else:
+                if (self.RIGHT_TUNNEL <= self.curr_tile < [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]) or (self.LEFT_TUNNEL > self.curr_tile >= [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]):
+                    self.rect.centerx = next_pos.centerx
+
+                elif self.curr_tile == [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]:
+                    self.rect.centerx = self._get_tile_coord((self.LEFT_TUNNEL[0] - 3, self.LEFT_TUNNEL[1]))[0]
+                
+                else:
+                    if self.curr_center[0] >= next_pos.centerx:
+                        self.rect.centerx = next_pos.centerx
+                    
+                    else:
+                        self.speed = [0, 0]
+
+        self.curr_tile = self._update_tile()
+
+
+    def move(self, target=None):
+        pass
 
 
     def _update_tile(self):
-        if (self.curr_tile[0] != self.rect.centerx // TILE_SIZE):
-            self.curr_tile[0] = self.rect.centerx // TILE_SIZE
-        
-        if (self.curr_tile[1] != self.rect.centery // TILE_SIZE):
-            self.curr_tile[1] = self.rect.centery // TILE_SIZE
+        return [self.rect.centerx // TILE_SIZE, self.rect.centery // TILE_SIZE]
 
 
     def _is_legal(self, x, y):
-        if np.all(tile_map[x, y]):
-            return True
-        else:
+        if (x < self.LEFT_TUNNEL[0]) or (x > self.RIGHT_TUNNEL[0]):
             return False
+        
+        else:
+            if np.all(tile_map[x, y]):
+                return True
+
+            else:
+                return False
 
 
 if __name__ == "__main__":
@@ -484,7 +486,7 @@ if __name__ == "__main__":
         screen.fill((0,0,0))
         screen.blit(*board)
 
-        blinky._move(pacman.get_current_tile())
+        blinky.move(pacman.get_current_tile())
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
