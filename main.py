@@ -341,6 +341,7 @@ class Ghost(pygame.sprite.Sprite):
     EAST, SOUTH, WEST, NORTH = 0, 1, 2, 3
     FRAMES = (0, 1)
     LEFT_TUNNEL, RIGHT_TUNNEL = [0, 17], [27, 17]
+    ILLEGAL_TILES = [[12, 13], [15, 13], [12, 25], [15, 25]]
 
     def __init__(self, ghost_id):
         self.ghost = ["BLINKY", "PINKY", "INKY", "CLYDE"][ghost_id]  # Selects respective ghost from list
@@ -463,7 +464,7 @@ class Ghost(pygame.sprite.Sprite):
 
             if (self.speed == [-1, 0]):  # west
                 if self._is_legal(*self.test_tile["west"]["west"]):
-                    if self._is_legal(*self.test_tile["west"]["north"]):
+                    if (self._is_legal(*self.test_tile["west"]["north"]) and (self.test_tile["west"]["north"] not in self.ILLEGAL_TILES)):
                         dist = np.abs(np.subtract(self.target, self.test_tile["west"]["north"]))
                         print(dist)
 
@@ -535,7 +536,7 @@ class Ghost(pygame.sprite.Sprite):
 
             if (self.speed == [1, 0]):  # east
                 if self._is_legal(*self.test_tile["east"]["east"]):
-                    if self._is_legal(*self.test_tile["east"]["north"]):
+                    if (self._is_legal(*self.test_tile["east"]["north"]) and (self.test_tile["east"]["north"] not in self.ILLEGAL_TILES)):
                         dist = np.abs(np.subtract(self.target, self.test_tile["east"]["north"]))
                         print(dist)
 
@@ -599,6 +600,9 @@ class Ghost(pygame.sprite.Sprite):
 
         elif self.ghost == "CLYDE":
             self.get_target([0, 35])
+        
+        self.behavior = "SCATTER"
+        self.is_locked = False
 
 
     def _update_tile(self):
