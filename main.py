@@ -349,7 +349,7 @@ class Ghost(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
         self.sprite_arr = [[get_sprite("ghost.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
 
-        self.curr_tile = [1, 4]
+        self.curr_tile = [14, 14]
         self.curr_center = [
             (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
@@ -585,6 +585,20 @@ class Ghost(pygame.sprite.Sprite):
 
     def get_target(self, tile):
         self.target = tile
+
+
+    def scatter(self):
+        if self.ghost == "BLINKY":
+            self.get_target([2, 0])
+        
+        elif self.ghost == "PINKY":
+            self.get_target([25, 0])
+
+        elif self.ghost == "INKY":
+            self.get_target([27, 35])
+
+        elif self.ghost == "CLYDE":
+            self.get_target([0, 35])
 
 
     def _update_tile(self):
