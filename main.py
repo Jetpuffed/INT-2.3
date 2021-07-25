@@ -240,7 +240,7 @@ class Pacman(pygame.sprite.Sprite):
 
             if ((self.speed == [-1, 0]) or (self.speed == [1, 0])) and (self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1)):  # west -> north <- east
 
-                center = ((self.rect.centerx // TILE_SIZE) * TILE_SIZE) + self.CENTER_Y
+                center = ((self.rect.centerx // TILE_SIZE) * TILE_SIZE) + self.CENTER_X
                 pos = (self.rect.centerx - center)
 
                 if pos < 0:  # pre-turn if coming from west, post-turn if coming from east
@@ -349,7 +349,7 @@ class Ghost(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
         self.sprite_arr = [[get_sprite("ghost.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
 
-        self.curr_tile = [14, 14]
+        self.curr_tile = [1, 4]
         self.curr_center = [
             (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
@@ -362,6 +362,10 @@ class Ghost(pygame.sprite.Sprite):
         self.rect.center = self.curr_center
 
         self.speed, self.multiplier = [1, 0], None
+        self._speed, self._direction = self.speed, self.direction
+        self.is_locked = False
+        self.target = None
+        self.intersection = None
         
         self.clock = 0
 
@@ -369,7 +373,7 @@ class Ghost(pygame.sprite.Sprite):
     def update(self):
         self.clock += 1
 
-        if self.clock == 6:
+        if self.clock == 12:
             self.clock = 0
             self.frame -= 1
 
@@ -378,76 +382,209 @@ class Ghost(pygame.sprite.Sprite):
 
         self.image = self.sprite_arr[self.direction][self.frame]
 
-        self.curr_center = [
+        self.curr_center = (
             (self.curr_tile[0] * TILE_SIZE) + self.CENTER_X,
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
-        ]
+        )
+
+        self.test_tile = {
+            "north": {
+                "north": [self.curr_tile[0], self.curr_tile[1] - 1],
+                "north_2": [self.curr_tile[0], self.curr_tile[1] - 2],
+                "west": [self.curr_tile[0] - 1, self.curr_tile[1] - 1],
+                "east": [self.curr_tile[0] + 1, self.curr_tile[1] - 1],
+            },
+            "west": {
+                "west": [self.curr_tile[0] - 1, self.curr_tile[1]],
+                "north": [self.curr_tile[0] - 1, self.curr_tile[1] - 1],
+                "west_2": [self.curr_tile[0] - 2, self.curr_tile[1]],
+                "south": [self.curr_tile[0] - 1, self.curr_tile[1] + 1],
+            },
+            "south": {
+                "south": [self.curr_tile[0], self.curr_tile[1] + 1],
+                "west": [self.curr_tile[0] - 1, self.curr_tile[1] + 1],
+                "south_2": [self.curr_tile[0], self.curr_tile[1] + 2],
+                "east": [self.curr_tile[0] + 1, self.curr_tile[1] + 1],
+            },
+            "east": {
+                "east": [self.curr_tile[0] + 1, self.curr_tile[1]],
+                "north": [self.curr_tile[0] + 1, self.curr_tile[1] - 1],
+                "south": [self.curr_tile[0] + 1, self.curr_tile[1] + 1],
+                "east_2": [self.curr_tile[0] + 2, self.curr_tile[1]]
+            },
+        }
+
+        # print("Center tile: ", self.curr_center)
+        # print("Location: ", self.rect.center, "\n")
+        # print("Target:", self.target)
+        # if self.rect.center == self.curr_center:
+        #     print("Centered")
+        # print("Locked?", self.is_locked)
 
         next_pos = self.rect.move((self.speed[0], self.speed[1]))
+        min = np.array([np.inf, np.inf])
 
-        if self.speed == [0, -1]:  # north
-            if self._is_legal(self.curr_tile[0], self.curr_tile[1] - 1):
-                self.rect.centery = next_pos.centery
+        if (self.rect.center == self.curr_center) and (not self.is_locked):
+            if (self.speed == [0, -1]):  # north
+                if self._is_legal(*self.test_tile["north"]["north"]):
+                    if self._is_legal(*self.test_tile["north"]["north_2"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["north_2"]))
+                        print(dist)
 
-            else:
-                if self.curr_center[1] <= next_pos.centery:
-                    self.rect.centery = next_pos.centery
-                
-                else:
-                    self.speed = [0, 0]
-
-        if self.speed == [-1, 0]:  # west
-            if self._is_legal(self.curr_tile[0] - 1, self.curr_tile[1]):
-                self.rect.centerx = next_pos.centerx
-
-            else:
-                if (self.LEFT_TUNNEL >= self.curr_tile > [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]) or (self.RIGHT_TUNNEL < self.curr_tile <= [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]):
-                    self.rect.centerx = next_pos.centerx
-
-                elif self.curr_tile == [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]:
-                    self.rect.centerx = self._get_tile_coord((self.RIGHT_TUNNEL[0] + 3, self.RIGHT_TUNNEL[1]))[0]
-
-                else:
-                    if self.curr_center[0] <= next_pos.centerx:
-                        self.rect.centerx = next_pos.centerx
+                        if (dist < min).all():
+                            self._speed, self._direction = [0, -1], self.NORTH
+                            min = dist
                     
-                    else:
-                        self.speed = [0, 0]
+                    if self._is_legal(*self.test_tile["north"]["west"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["west"]))
+                        print(dist)
 
-        if self.speed == [0, 1]:  # south
-            if self._is_legal(self.curr_tile[0], self.curr_tile[1] + 1):
-                self.rect.centery = next_pos.centery
+                        if (dist < min).all():
+                            self._speed, self._direction = [-1, 0], self.WEST
+                            min = dist
 
-            else:
-                if self.curr_center[1] >= next_pos.centery:
-                    self.rect.centery = next_pos.centery
-                
-                else:
-                    self.speed = [0, 0]
+                    if self._is_legal(*self.test_tile["north"]["east"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["east"]))
+                        print(dist)
 
-        if self.speed == [1, 0]:  # east
-            if self._is_legal(self.curr_tile[0] + 1, self.curr_tile[1]):
-                self.rect.centerx = next_pos.centerx
+                        if (dist[0] < min[0]) and (dist[1] == min[1]):
+                            self._speed, self._direction = [1, 0], self.EAST
+                            min = dist
 
-            else:
-                if (self.RIGHT_TUNNEL <= self.curr_tile < [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]) or (self.LEFT_TUNNEL > self.curr_tile >= [(self.LEFT_TUNNEL[0] - 3), self.LEFT_TUNNEL[1]]):
-                    self.rect.centerx = next_pos.centerx
-
-                elif self.curr_tile == [(self.RIGHT_TUNNEL[0] + 3), self.RIGHT_TUNNEL[1]]:
-                    self.rect.centerx = self._get_tile_coord((self.LEFT_TUNNEL[0] - 3, self.LEFT_TUNNEL[1]))[0]
-                
-                else:
-                    if self.curr_center[0] >= next_pos.centerx:
-                        self.rect.centerx = next_pos.centerx
+                        elif (dist < min).all():
+                            self._speed, self._direction = [1, 0], self.EAST
+                            min = dist
                     
-                    else:
-                        self.speed = [0, 0]
+                    self.is_locked = True
+                    self.intersection = self.test_tile["north"]["north"]
+                    self.rect = next_pos
+                    print("Target:", self.target)
+                    print("Min chosen (north):", min, "\n")
+
+            if (self.speed == [-1, 0]):  # west
+                if self._is_legal(*self.test_tile["west"]["west"]):
+                    if self._is_legal(*self.test_tile["west"]["north"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["north"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [0, -1], self.NORTH
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["west"]["west_2"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["west_2"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [-1, 0], self.WEST
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["west"]["south"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["south"]))
+                        print(dist)
+
+                        if (dist[0] == min[0]) and (dist[1] < min[1]):
+                            self._speed, self._direction = [0, 1], self.SOUTH
+                            min = dist
+
+                        elif (dist < min).all():
+                            self._speed, self._direction = [0, 1], self.SOUTH
+                            min = dist
+
+                    self.is_locked = True
+                    self.intersection = self.test_tile["west"]["west"]
+                    self.rect = next_pos
+                    print("Target:", self.target)
+                    print("Min chosen (west):", min, "\n")
+
+            if (self.speed == [0, 1]):  # south
+                if self._is_legal(*self.test_tile["south"]["south"]):
+                    if self._is_legal(*self.test_tile["south"]["west"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["west"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [-1, 0], self.WEST
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["south"]["south_2"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["south_2"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [0, 1], self.SOUTH
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["south"]["east"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["east"]))
+                        print(dist)
+
+                        if (dist[0] < min[0]) and (dist[1] == min[1]):
+                            self._speed, self._direction = [1, 0], self.EAST
+                            min = dist
+
+                        elif (dist < min).all():
+                            self._speed, self._direction = [1, 0], self.EAST
+                            min = dist
+
+                    self.is_locked = True
+                    self.intersection = self.test_tile["south"]["south"]
+                    self.rect = next_pos
+                    print("Target:", self.target)
+                    print("Min chosen (south):", min, "\n")
+
+            if (self.speed == [1, 0]):  # east
+                if self._is_legal(*self.test_tile["east"]["east"]):
+                    if self._is_legal(*self.test_tile["east"]["north"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["north"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [0, -1], self.NORTH
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["east"]["south"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["south"]))
+                        print(dist)
+
+                        if (dist[0] == min[0]) and (dist[1] < min[1]):
+                            self._speed, self._direction = [0, 1], self.SOUTH
+                            min = dist
+
+                        elif (dist < min).all():
+                            self._speed, self._direction = [0, 1], self.SOUTH
+                            min = dist
+
+                    if self._is_legal(*self.test_tile["east"]["east_2"]):
+                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["east_2"]))
+                        print(dist)
+
+                        if (dist < min).all():
+                            self._speed, self._direction = [1, 0], self.EAST
+                            min = dist
+
+                    self.is_locked = True
+                    self.intersection = self.test_tile["east"]["east"]
+                    self.rect = next_pos
+                    print("Target:", self.target)
+                    print("Min chosen (east):", min, "\n")
+
+        elif (self.curr_tile == self.intersection) and self.is_locked:
+            if self.rect.center != self.curr_center:
+                self.rect = next_pos
+            else:
+                self.is_locked = False
+                self.speed, self.direction = self._speed, self._direction
+        
+        else:
+            if self._is_legal(*np.add(self.curr_tile, self.speed).tolist()):
+                self.rect = next_pos
 
         self.curr_tile = self._update_tile()
 
 
-    def move(self, target=None):
-        pass
+    def get_target(self, tile):
+        self.target = tile
 
 
     def _update_tile(self):
@@ -455,15 +592,11 @@ class Ghost(pygame.sprite.Sprite):
 
 
     def _is_legal(self, x, y):
-        if (x < self.LEFT_TUNNEL[0]) or (x > self.RIGHT_TUNNEL[0]):
-            return False
-        
-        else:
-            if np.all(tile_map[x, y]):
-                return True
+        if np.all(tile_map[x, y]):
+            return True
 
-            else:
-                return False
+        else:
+            return False
 
 
 if __name__ == "__main__":
@@ -486,7 +619,7 @@ if __name__ == "__main__":
         screen.fill((0,0,0))
         screen.blit(*board)
 
-        blinky.move(pacman.get_current_tile())
+        blinky.get_target(pacman.get_current_tile())
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
