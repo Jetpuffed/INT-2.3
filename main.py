@@ -139,13 +139,13 @@ class Pacman(pygame.sprite.Sprite):
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
         ]
 
-        self.direction, self.frame = self.EAST, self.FRAMES[2]
+        self.direction, self.frame = self.WEST, self.FRAMES[2]
         self.image = self.sprite_arr[self.direction][self.frame]
 
         self.rect = self.image.get_rect()
         self.rect.center = self.curr_center
 
-        self.speed, self.multiplier = [1, 0], None
+        self.speed, self.multiplier = [-1, 0], None
         self.is_moving = False
         
         self.clock = 0
@@ -342,10 +342,18 @@ class Ghost(pygame.sprite.Sprite):
     FRAMES = (0, 1)
     LEFT_TUNNEL, RIGHT_TUNNEL = [0, 17], [27, 17]
     ILLEGAL_TILES = [[12, 13], [15, 13], [12, 25], [15, 25]]
+    COMPASS = {
+        "north": ([0, -1], NORTH),
+        "west": ([-1, 0], WEST),
+        "south": ([0, 1], SOUTH),
+        "east": ([1, 0], EAST),
+    }
 
     def __init__(self, ghost_id):
         self.ghost = ["BLINKY", "PINKY", "INKY", "CLYDE"][ghost_id]  # Selects respective ghost from list
+        self.is_signal = False
         self.behavior = None  # Behaviors are: CHASE, SCATTER, and FRIGHTENED
+        self.scatter_count = 0
 
         pygame.sprite.Sprite.__init__(self)  # Calls the sprite initializer
         self.sprite_arr = [[get_sprite("ghost.bmp", x, y, self.WIDTH, self.HEIGHT) for x in self.SPRITE_X] for y in self.SPRITE_Y]
@@ -356,14 +364,14 @@ class Ghost(pygame.sprite.Sprite):
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
         ]
 
-        self.direction, self.frame = self.EAST, self.FRAMES[0]
+        self._speed, self._direction = None, None
+        self.speed, self.direction = self.COMPASS["east"]
+        self.frame = self.FRAMES[0]
         self.image = self.sprite_arr[self.direction][self.frame]
 
         self.rect = self.image.get_rect()
         self.rect.center = self.curr_center
 
-        self.speed, self.multiplier = [1, 0], None
-        self._speed, self._direction = self.speed, self.direction
         self.is_locked = False
         self.target = None
         self.intersection = None
@@ -380,6 +388,11 @@ class Ghost(pygame.sprite.Sprite):
 
             if self.frame not in self.FRAMES:
                 self.frame = self.FRAMES[1]
+        
+        if self.is_signal:
+            self.speed = np.multiply(self.speed, -1).tolist()
+            # self.direction = None
+            self.is_signal = False
 
         self.image = self.sprite_arr[self.direction][self.frame]
 
@@ -388,187 +401,103 @@ class Ghost(pygame.sprite.Sprite):
             (self.curr_tile[1] * TILE_SIZE) + self.CENTER_Y,
         )
 
+        self.next_tile = {
+            "north": [self.curr_tile[0], self.curr_tile[1] - 1],
+            "west": [self.curr_tile[0] - 1, self.curr_tile[1]],
+            "south": [self.curr_tile[0], self.curr_tile[1] + 1],
+            "east": [self.curr_tile[0] + 1, self.curr_tile[1]],
+        }
+        
         self.test_tile = {
             "north": {
-                "north": [self.curr_tile[0], self.curr_tile[1] - 1],
-                "north_2": [self.curr_tile[0], self.curr_tile[1] - 2],
+                "north": [self.curr_tile[0], self.curr_tile[1] - 2],
                 "west": [self.curr_tile[0] - 1, self.curr_tile[1] - 1],
                 "east": [self.curr_tile[0] + 1, self.curr_tile[1] - 1],
             },
             "west": {
-                "west": [self.curr_tile[0] - 1, self.curr_tile[1]],
                 "north": [self.curr_tile[0] - 1, self.curr_tile[1] - 1],
-                "west_2": [self.curr_tile[0] - 2, self.curr_tile[1]],
+                "west": [self.curr_tile[0] - 2, self.curr_tile[1]],
                 "south": [self.curr_tile[0] - 1, self.curr_tile[1] + 1],
             },
             "south": {
-                "south": [self.curr_tile[0], self.curr_tile[1] + 1],
                 "west": [self.curr_tile[0] - 1, self.curr_tile[1] + 1],
-                "south_2": [self.curr_tile[0], self.curr_tile[1] + 2],
+                "south": [self.curr_tile[0], self.curr_tile[1] + 2],
                 "east": [self.curr_tile[0] + 1, self.curr_tile[1] + 1],
             },
             "east": {
-                "east": [self.curr_tile[0] + 1, self.curr_tile[1]],
                 "north": [self.curr_tile[0] + 1, self.curr_tile[1] - 1],
                 "south": [self.curr_tile[0] + 1, self.curr_tile[1] + 1],
-                "east_2": [self.curr_tile[0] + 2, self.curr_tile[1]]
+                "east": [self.curr_tile[0] + 2, self.curr_tile[1]]
             },
         }
 
-        # print("Center tile: ", self.curr_center)
-        # print("Location: ", self.rect.center, "\n")
-        # print("Target:", self.target)
-        # if self.rect.center == self.curr_center:
-        #     print("Centered")
-        # print("Locked?", self.is_locked)
-
-        next_pos = self.rect.move((self.speed[0], self.speed[1]))
-        min = np.array([np.inf, np.inf])
+        next_pos = self.rect.move(*self.speed)
+        min = np.inf
 
         if (self.rect.center == self.curr_center) and (not self.is_locked):
             if (self.speed == [0, -1]):  # north
-                if self._is_legal(*self.test_tile["north"]["north"]):
-                    if self._is_legal(*self.test_tile["north"]["north_2"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["north_2"]))
-                        print(dist)
+                if self._is_legal(*self.next_tile["north"]):
+                    for tile in self.test_tile["north"].items():
+                        key, value = tile
+                        if self._is_legal(*value):
+                            origin, target = np.array(value), np.array(self.target)
+                            dist = np.linalg.norm(origin - target)
 
-                        if (dist < min).all():
-                            self._speed, self._direction = [0, -1], self.NORTH
-                            min = dist
-                    
-                    if self._is_legal(*self.test_tile["north"]["west"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["west"]))
-                        print(dist)
+                            if dist < min:
+                                self._speed, self._direction = self.COMPASS[key]
+                                min = dist
 
-                        if (dist < min).all():
-                            self._speed, self._direction = [-1, 0], self.WEST
-                            min = dist
-
-                    if self._is_legal(*self.test_tile["north"]["east"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["north"]["east"]))
-                        print(dist)
-
-                        if (dist[0] < min[0]) and (dist[1] == min[1]):
-                            self._speed, self._direction = [1, 0], self.EAST
-                            min = dist
-
-                        elif (dist < min).all():
-                            self._speed, self._direction = [1, 0], self.EAST
-                            min = dist
-                    
+                    self.intersection = self.next_tile["north"]
                     self.is_locked = True
-                    self.intersection = self.test_tile["north"]["north"]
                     self.rect = next_pos
-                    print("Target:", self.target)
-                    print("Min chosen (north):", min, "\n")
 
-            if (self.speed == [-1, 0]):  # west
-                if self._is_legal(*self.test_tile["west"]["west"]):
-                    if (self._is_legal(*self.test_tile["west"]["north"]) and (self.test_tile["west"]["north"] not in self.ILLEGAL_TILES)):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["north"]))
-                        print(dist)
+            elif (self.speed == [-1, 0]):  # west
+                if self._is_legal(*self.next_tile["west"]):
+                    for tile in self.test_tile["west"].items():
+                        key, value = tile
+                        if (self._is_legal(*value) and (value not in self.ILLEGAL_TILES)):
+                            origin, target = np.array(value), np.array(self.target)
+                            dist = np.linalg.norm(origin - target)
 
-                        if (dist < min).all():
-                            self._speed, self._direction = [0, -1], self.NORTH
-                            min = dist
+                            if dist < min:
+                                self._speed, self._direction = self.COMPASS[key]
+                                min = dist
 
-                    if self._is_legal(*self.test_tile["west"]["west_2"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["west_2"]))
-                        print(dist)
-
-                        if (dist < min).all():
-                            self._speed, self._direction = [-1, 0], self.WEST
-                            min = dist
-
-                    if self._is_legal(*self.test_tile["west"]["south"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["west"]["south"]))
-                        print(dist)
-
-                        if (dist[0] == min[0]) and (dist[1] < min[1]):
-                            self._speed, self._direction = [0, 1], self.SOUTH
-                            min = dist
-
-                        elif (dist < min).all():
-                            self._speed, self._direction = [0, 1], self.SOUTH
-                            min = dist
-
+                    self.intersection = self.next_tile["west"]
                     self.is_locked = True
-                    self.intersection = self.test_tile["west"]["west"]
                     self.rect = next_pos
-                    print("Target:", self.target)
-                    print("Min chosen (west):", min, "\n")
 
-            if (self.speed == [0, 1]):  # south
-                if self._is_legal(*self.test_tile["south"]["south"]):
-                    if self._is_legal(*self.test_tile["south"]["west"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["west"]))
-                        print(dist)
+            elif (self.speed == [0, 1]):  # south
+                if self._is_legal(*self.next_tile["south"]):
+                    for tile in self.test_tile["south"].items():
+                        key, value = tile
+                        if self._is_legal(*value):
+                            origin, target = np.array(value), np.array(self.target)
+                            dist = np.linalg.norm(origin - target)
 
-                        if (dist < min).all():
-                            self._speed, self._direction = [-1, 0], self.WEST
-                            min = dist
+                            if dist < min:
+                                self._speed, self._direction = self.COMPASS[key]
+                                min = dist
 
-                    if self._is_legal(*self.test_tile["south"]["south_2"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["south_2"]))
-                        print(dist)
-
-                        if (dist < min).all():
-                            self._speed, self._direction = [0, 1], self.SOUTH
-                            min = dist
-
-                    if self._is_legal(*self.test_tile["south"]["east"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["south"]["east"]))
-                        print(dist)
-
-                        if (dist[0] < min[0]) and (dist[1] == min[1]):
-                            self._speed, self._direction = [1, 0], self.EAST
-                            min = dist
-
-                        elif (dist < min).all():
-                            self._speed, self._direction = [1, 0], self.EAST
-                            min = dist
-
+                    self.intersection = self.next_tile["south"]
                     self.is_locked = True
-                    self.intersection = self.test_tile["south"]["south"]
                     self.rect = next_pos
-                    print("Target:", self.target)
-                    print("Min chosen (south):", min, "\n")
 
-            if (self.speed == [1, 0]):  # east
-                if self._is_legal(*self.test_tile["east"]["east"]):
-                    if (self._is_legal(*self.test_tile["east"]["north"]) and (self.test_tile["east"]["north"] not in self.ILLEGAL_TILES)):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["north"]))
-                        print(dist)
+            elif (self.speed == [1, 0]):  # east
+                if self._is_legal(*self.next_tile["east"]):
+                    for tile in self.test_tile["east"].items():
+                        key, value = tile
+                        if (self._is_legal(*value) and (value not in self.ILLEGAL_TILES)):
+                            origin, target = np.array(value), np.array(self.target)
+                            dist = np.linalg.norm(origin - target)
 
-                        if (dist < min).all():
-                            self._speed, self._direction = [0, -1], self.NORTH
-                            min = dist
+                            if dist < min:
+                                self._speed, self._direction = self.COMPASS[key]
+                                min = dist
 
-                    if self._is_legal(*self.test_tile["east"]["south"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["south"]))
-                        print(dist)
-
-                        if (dist[0] == min[0]) and (dist[1] < min[1]):
-                            self._speed, self._direction = [0, 1], self.SOUTH
-                            min = dist
-
-                        elif (dist < min).all():
-                            self._speed, self._direction = [0, 1], self.SOUTH
-                            min = dist
-
-                    if self._is_legal(*self.test_tile["east"]["east_2"]):
-                        dist = np.abs(np.subtract(self.target, self.test_tile["east"]["east_2"]))
-                        print(dist)
-
-                        if (dist < min).all():
-                            self._speed, self._direction = [1, 0], self.EAST
-                            min = dist
-
+                    self.intersection = self.next_tile["east"]
                     self.is_locked = True
-                    self.intersection = self.test_tile["east"]["east"]
                     self.rect = next_pos
-                    print("Target:", self.target)
-                    print("Min chosen (east):", min, "\n")
 
         elif (self.curr_tile == self.intersection) and self.is_locked:
             if self.rect.center != self.curr_center:
@@ -584,25 +513,35 @@ class Ghost(pygame.sprite.Sprite):
         self.curr_tile = self._update_tile()
 
 
-    def get_target(self, tile):
-        self.target = tile
-
-
     def scatter(self):
-        if self.ghost == "BLINKY":
-            self.get_target([2, 0])
-        
-        elif self.ghost == "PINKY":
-            self.get_target([25, 0])
+        if self.scatter_count != 4:
+            if self.ghost == "BLINKY":
+                self.target = [25, 0]
+            
+            elif self.ghost == "PINKY":
+                self.target = [2, 0]
 
-        elif self.ghost == "INKY":
-            self.get_target([27, 35])
+            elif self.ghost == "INKY":
+                self.target = [27, 35]
 
-        elif self.ghost == "CLYDE":
-            self.get_target([0, 35])
-        
-        self.behavior = "SCATTER"
+            elif self.ghost == "CLYDE":
+                self.target = [0, 35]
+            
+            self.behavior = "SCATTER"
+            self.scatter_count += 1
+            self.is_locked = False
+            self.is_signal = True
+
+
+    def chase(self, target):
+        self.target = target
+        self.behavior = "CHASE"
         self.is_locked = False
+        self.is_signal = True
+
+
+    def get_behavior(self):
+        return self.behavior
 
 
     def _update_tile(self):
@@ -622,7 +561,6 @@ if __name__ == "__main__":
 
     flags = pygame.SCALED | pygame.NOFRAME
     screen = pygame.display.set_mode(WINDOW, flags)
-
     board = load_image("board.bmp")
 
     pacman = Pacman()
@@ -630,6 +568,7 @@ if __name__ == "__main__":
     sprites = pygame.sprite.RenderClear((pacman, blinky))
 
     clock = pygame.time.Clock()
+    frames, seconds = 0, 0
 
     while True:  # The game's main loop
         clock.tick(60)
@@ -637,7 +576,23 @@ if __name__ == "__main__":
         screen.fill((0,0,0))
         screen.blit(*board)
 
-        blinky.get_target(pacman.get_current_tile())
+        frames += 1
+        if frames == 60:
+            frames = 0
+            seconds += 1
+        # print(seconds)
+
+        if blinky.get_behavior() == None:
+            blinky.scatter()
+
+        if (seconds == 7) and (blinky.get_behavior() != "CHASE"):
+            blinky.chase(pacman.get_current_tile())
+            seconds = 0
+            print("MODE CHANGE: CHASE")
+        elif (seconds == 20) and (blinky.get_behavior() != "SCATTER"):
+            blinky.scatter()
+            seconds = 0
+            print("MODE CHANGE: SCATTER")
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
