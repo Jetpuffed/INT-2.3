@@ -672,41 +672,33 @@ if __name__ == "__main__":
     board = load_image("board.bmp", color=(0, 0, 255))
 
     pacman = Pacman()
-    blinky, pinky, inky, clyde = Ghost(0), Ghost(1), Ghost(2), Ghost(3)
-    sprites = pygame.sprite.RenderClear((pacman, blinky, pinky, inky, clyde))
+    ghosts = (blinky, pinky, inky, clyde) = (Ghost(0), Ghost(1), Ghost(2), Ghost(3))
 
-    mode = None
-    scatter = 0
+    player = pygame.sprite.RenderClear(pacman)
+    enemies = pygame.sprite.RenderClear(ghosts)
+
+    scatter_count, chase_count = 0, 0
+    scatter_next, chase_next = 0, 0
 
     clock = pygame.time.Clock()
 
-    dt = 0.0
+    dt = 0.0  # Delta time
 
     while True:  # The game's main loop
-
         screen.fill((0, 0, 0))
         screen.blit(*board)
         
-        if (mode == None) or ((seconds == 20) and (mode == "CHASE")):
+        if (dt == scatter_next) and (scatter_count != 4):
             print("MODE CHANGE: SCATTER")
-            blinky.send_signal()
-            pinky.send_signal()
-            inky.send_signal()
-            clyde.send_signal()
-            mode = "SCATTER"
-            seconds = 0
-            scatter += 1
+            (ghost.send_signal() for ghost in ghosts)
+            (ghost.scatter() for ghost in ghosts)
+            scatter_count += 1
+            chase_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["CHASE"][chase_count]
 
-        elif (seconds == 7) and (mode == "SCATTER"):
+        elif (dt == chase_next) and (chase_count != 4):
             print("MODE CHANGE: CHASE")
-            blinky.send_signal()
-            pinky.send_signal()
-            inky.send_signal()
-            clyde.send_signal()
-            mode = "CHASE"
-            seconds = 0
+            (ghost.send_signal() for ghost in ghosts)
 
-        if mode == "CHASE":
             target = pacman.get_current_tile()
             offset = pacman.get_current_speed()
             helper = blinky.get_current_tile()
@@ -715,12 +707,22 @@ if __name__ == "__main__":
             pinky.chase(target, offset)
             inky.chase(target, offset, helper)
             clyde.chase(target)
-        
-        elif mode == "SCATTER":
-            blinky.scatter()
-            pinky.scatter()
-            inky.scatter()
-            clyde.scatter()
+
+            chase_count += 1
+            scatter_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["SCATTER"][scatter_count]
+
+        if dt < scatter_next:
+            target = pacman.get_current_tile()
+            offset = pacman.get_current_speed()
+            helper = blinky.get_current_tile()
+
+            blinky.chase(target)
+            pinky.chase(target, offset)
+            inky.chase(target, offset, helper)
+            clyde.chase(target)
+
+        if dt < chase_next:
+            (ghost.scatter() for ghost in ghosts)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -742,8 +744,10 @@ if __name__ == "__main__":
                 if event.key == K_RIGHT:
                     pacman.move("east")
 
-        sprites.update()
-        sprites.draw(screen)
+        player.update()
+        player.draw(screen)
+        ghosts.update()
+        ghosts.draw(screen)
         pygame.display.flip()
 
         dt += clock.tick(60) / 1000.0
