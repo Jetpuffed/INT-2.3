@@ -14,6 +14,59 @@ TILE_X, TILE_Y = X // TILE_SIZE, Y // TILE_SIZE
 DOTS = 240
 BIG_DOTS = 4
 
+EVENT_TABLE = {
+    "LEVEL_ONE": {
+        "MODE": {
+            "SCATTER": [7.0, 7.0, 5.0, 5.0],
+            "CHASE": [20.0, 20.0, 20.0, np.inf],
+        },
+        "PACMAN_SPEED": {
+            "NORM": 0.80,
+            "NORM_DOTS": 0.71,
+            "FRIGHT": 0.90,
+            "FRIGHT_DOTS": 0.79,
+        },
+        "GHOST_SPEED": {
+            "NORM": 0.75,
+            "FRIGHT": 0.50,
+            "TUNNEL": 0.40,
+        }
+    },
+    "LEVEL_TWO": {
+        "MODE": {
+            "SCATTER": [7.0, 7.0, 5.0, (1.0 / 60.0)],
+            "CHASE": [20.0, 20.0, 1033.0, np.inf],
+        },
+        "PACMAN_SPEED": {
+            "NORM": 0.90,
+            "NORM_DOTS": 0.79,
+            "FRIGHT": 0.95,
+            "FRIGHT_DOTS": 0.83,
+        },
+        "GHOST_SPEED": {
+            "NORM": 0.85,
+            "FRIGHT": 0.55,
+            "TUNNEL": 0.45,
+        }
+    },
+    "LEVEL_THREE": {
+        "MODE": {
+            "SCATTER": [5.0, 5.0, 5.0, (1.0 / 60.0)],
+            "CHASE": [20.0, 20.0, 1037.0, np.inf],
+        },
+        "PACMAN_SPEED": {
+            "NORM": 1.00,
+            "NORM_DOTS": 0.87,
+            "FRIGHT": 1.00,
+            "FRIGHT_DOTS": 0.87,
+        },
+        "GHOST_SPEED": {
+            "NORM": 0.95,
+            "FRIGHT": 0.60,
+            "TUNNEL": 0.50,
+        }
+    }
+}
 
 tile_map = np.zeros((X // TILE_SIZE, Y // TILE_SIZE, 2), dtype = bool)
 
@@ -622,22 +675,17 @@ if __name__ == "__main__":
     blinky, pinky, inky, clyde = Ghost(0), Ghost(1), Ghost(2), Ghost(3)
     sprites = pygame.sprite.RenderClear((pacman, blinky, pinky, inky, clyde))
 
-    clock = pygame.time.Clock()
-    frames, seconds = 0, 0
-
     mode = None
     scatter = 0
 
+    clock = pygame.time.Clock()
+
+    dt = 0.0
+
     while True:  # The game's main loop
-        clock.tick(60)
 
         screen.fill((0, 0, 0))
         screen.blit(*board)
-
-        frames += 1
-        if frames == 60:
-            frames = 0
-            seconds += 1
         
         if (mode == None) or ((seconds == 20) and (mode == "CHASE")):
             print("MODE CHANGE: SCATTER")
@@ -697,3 +745,5 @@ if __name__ == "__main__":
         sprites.update()
         sprites.draw(screen)
         pygame.display.flip()
+
+        dt += clock.tick(60) / 1000.0
