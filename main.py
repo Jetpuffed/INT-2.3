@@ -21,15 +21,15 @@ EVENT_TABLE = {
             "CHASE": [20.0, 20.0, 20.0, np.inf],
         },
         "PACMAN_SPEED": {
-            "NORM": 0.80,
-            "NORM_DOTS": 0.71,
-            "FRIGHT": 0.90,
-            "FRIGHT_DOTS": 0.79,
+            "NORM": 1.0 / (80.0 * 0.80),
+            "NORM_DOTS": 1.0 / (80.0 * 0.71),
+            "FRIGHT": 1.0 / (80.0 * 0.90),
+            "FRIGHT_DOTS": 1.0 / (80.0 * 0.79),
         },
         "GHOST_SPEED": {
-            "NORM": 0.75,
-            "FRIGHT": 0.50,
-            "TUNNEL": 0.40,
+            "NORM": 1.0 / (80.0 * 0.75),
+            "FRIGHT": 1.0 / (80.0 * 0.50),
+            "TUNNEL": 1.0 / (80.0 * 0.40),
         }
     },
     "LEVEL_TWO": {
@@ -38,15 +38,15 @@ EVENT_TABLE = {
             "CHASE": [20.0, 20.0, 1033.0, np.inf],
         },
         "PACMAN_SPEED": {
-            "NORM": 0.90,
-            "NORM_DOTS": 0.79,
-            "FRIGHT": 0.95,
-            "FRIGHT_DOTS": 0.83,
+            "NORM": 1.0 / (80.0 * 0.90),
+            "NORM_DOTS": 1.0 / (80.0 * 0.79),
+            "FRIGHT": 1.0 / (80.0 * 0.95),
+            "FRIGHT_DOTS": 1.0 / (80.0 * 0.83),
         },
         "GHOST_SPEED": {
-            "NORM": 0.85,
-            "FRIGHT": 0.55,
-            "TUNNEL": 0.45,
+            "NORM": 1.0 / (80.0 * 0.85),
+            "FRIGHT": 1.0 / (80.0 * 0.55),
+            "TUNNEL": 1.0 / (80.0 * 0.45),
         }
     },
     "LEVEL_THREE": {
@@ -55,15 +55,15 @@ EVENT_TABLE = {
             "CHASE": [20.0, 20.0, 1037.0, np.inf],
         },
         "PACMAN_SPEED": {
-            "NORM": 1.00,
-            "NORM_DOTS": 0.87,
-            "FRIGHT": 1.00,
-            "FRIGHT_DOTS": 0.87,
+            "NORM": 1.0 / (80.0 * 1.0),
+            "NORM_DOTS": 1.0 / (80.0 * 0.87),
+            "FRIGHT": 1.0 / (80.0 * 1.0),
+            "FRIGHT_DOTS": 1.0 / (80.0 * 0.87),
         },
         "GHOST_SPEED": {
-            "NORM": 0.95,
-            "FRIGHT": 0.60,
-            "TUNNEL": 0.50,
+            "NORM": 1.0 / (80.0 * 0.95),
+            "FRIGHT": 1.0 / (80.0 * 0.60),
+            "TUNNEL": 1.0 / (80.0 * 0.50),
         }
     }
 }
@@ -677,52 +677,49 @@ if __name__ == "__main__":
     player = pygame.sprite.RenderClear(pacman)
     enemies = pygame.sprite.RenderClear(ghosts)
 
+    mode = "CHASE"
     scatter_count, chase_count = 0, 0
-    scatter_next, chase_next = 0, 0
-
-    clock = pygame.time.Clock()
+    scatter_next, chase_next = 0.0, 0.0
 
     dt = 0.0  # Delta time
+    clock = pygame.time.Clock()
+
+    player_speed = EVENT_TABLE["LEVEL_ONE"]["PACMAN_SPEED"]["NORM"]
+    enemy_speed = EVENT_TABLE["LEVEL_THREE"]["GHOST_SPEED"]["NORM"]
+
+    player_next, enemy_next = 0.0, 0.0
 
     while True:  # The game's main loop
+        clock.tick(60.0)
+
         screen.fill((0, 0, 0))
         screen.blit(*board)
         
-        if (dt == scatter_next) and (scatter_count != 4):
-            print("MODE CHANGE: SCATTER")
-            (ghost.send_signal() for ghost in ghosts)
-            (ghost.scatter() for ghost in ghosts)
-            scatter_count += 1
-            chase_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["CHASE"][chase_count]
+        if mode == "CHASE":
+            if (scatter_next < dt) and (chase_count != 4):
+                print("MODE CHANGE: SCATTER")
+                mode = "SCATTER"
+                [ghost.send_signal() for ghost in ghosts]
+                chase_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["SCATTER"][scatter_count]
+                scatter_count += 1
+            
+            else:
+                target = pacman.get_current_tile()
+                offset = pacman.get_current_speed()
+                helper = blinky.get_current_tile()
 
-        elif (dt == chase_next) and (chase_count != 4):
-            print("MODE CHANGE: CHASE")
-            (ghost.send_signal() for ghost in ghosts)
+                blinky.chase(target)
+                pinky.chase(target, offset)
+                inky.chase(target, offset, helper)
+                clyde.chase(target)
 
-            target = pacman.get_current_tile()
-            offset = pacman.get_current_speed()
-            helper = blinky.get_current_tile()
-
-            blinky.chase(target)
-            pinky.chase(target, offset)
-            inky.chase(target, offset, helper)
-            clyde.chase(target)
-
-            chase_count += 1
-            scatter_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["SCATTER"][scatter_count]
-
-        if dt < scatter_next:
-            target = pacman.get_current_tile()
-            offset = pacman.get_current_speed()
-            helper = blinky.get_current_tile()
-
-            blinky.chase(target)
-            pinky.chase(target, offset)
-            inky.chase(target, offset, helper)
-            clyde.chase(target)
-
-        if dt < chase_next:
-            (ghost.scatter() for ghost in ghosts)
+        if mode == "SCATTER":
+            if (chase_next < dt) and (scatter_count != 4):
+                print("MODE CHANGE: CHASE")
+                mode = "CHASE"
+                [ghost.send_signal() for ghost in ghosts]
+                scatter_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["CHASE"][chase_count]
+                chase_count += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -743,11 +740,18 @@ if __name__ == "__main__":
 
                 if event.key == K_RIGHT:
                     pacman.move("east")
+        
+        if player_next <= dt:
+            player.update()
+            player_next = dt + player_speed
+        
+        if enemy_next <= dt:
+            enemies.update()
+            enemy_next = dt + enemy_speed
 
-        player.update()
         player.draw(screen)
-        ghosts.update()
-        ghosts.draw(screen)
+        enemies.draw(screen)
         pygame.display.flip()
 
-        dt += clock.tick(60) / 1000.0
+        dt += (1.0 / 60.0)
+        print(dt)
