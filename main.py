@@ -685,7 +685,7 @@ if __name__ == "__main__":
     clock = pygame.time.Clock()
 
     player_speed = EVENT_TABLE["LEVEL_ONE"]["PACMAN_SPEED"]["NORM"]
-    enemy_speed = EVENT_TABLE["LEVEL_THREE"]["GHOST_SPEED"]["NORM"]
+    enemy_speed = EVENT_TABLE["LEVEL_ONE"]["GHOST_SPEED"]["NORM"]
 
     player_next, enemy_next = 0.0, 0.0
 
@@ -720,6 +720,9 @@ if __name__ == "__main__":
                 [ghost.send_signal() for ghost in ghosts]
                 scatter_next = dt + EVENT_TABLE["LEVEL_ONE"]["MODE"]["CHASE"][chase_count]
                 chase_count += 1
+            
+            else:
+                [ghost.scatter() for ghost in ghosts]
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -754,4 +757,3 @@ if __name__ == "__main__":
         pygame.display.flip()
 
         dt += (1.0 / 60.0)
-        print(dt)
